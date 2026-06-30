@@ -1,0 +1,45 @@
+when:
+  event: [push, manual]
+
+steps:
+  - name: check-tools-and-env
+    image: alpine:3.21
+    commands:
+      - apk add --no-cache curl
+      - curl -sL https://github.com/moby/buildkit/releases/download/v0.31.0/buildkit-v0.31.0.linux-arm64.tar.gz | tar -xz -C /usr/local bin/buildctl
+      - buildctl --version
+      - echo "Testing on repo $CI_REPO at commit $CI_COMMIT_SHA"
+
+  - name: test-build-and-push
+    image: alpine:3.21
+    environment:
+      REGISTRY_PASSWORD:
+        from_secret: registry_password
+    commands:
+      - apk add --no-cache curl
+      - curl -sL https://github.com/moby/buildkit/releases/download/v0.31.0/buildkit-v0.31.0.linux-arm64.tar.gz | tar -xz -C /usr/local bin/buildctl
+      - mkdir -p /tmp/build
+      - echo 'FROM alpine:3.21' > /tmp/build/Dockerfile
+      - echo 'CMD ["echo", "hello-from-woodpecker"]' >> /tmp/build/Dockerfile
+      - |
+        buildctl --addr tcp://buildkitd-service.default.svc:1234 build \
+          --frontend dockerfile.v0 \
+          --local context=/tmp/build \
+          --local dockerfile=/tmp/build \
+          --output type=image,name=registry-service.default.svc:5000/test-hello:latest,push=true,registry.insecure=true,registry.username=admin,registry.password=$REGISTRY_PASSWORD
+
+  - name: verify-image
+    image: alpine:3.21
+    environment:
+      REGISTRY_PASSWORD:
+        from_secret: registry_password
+    commands:
+      - apk add --no-cache curl
+      - |
+        STATUS=$(curl -s -o /dev/null -w "%{http_code}" -u "admin:$REGISTRY_PASSWORD" "http://registry-service.default.svc:5000/v2/test-hello/manifests/latest" -H "Accept: application/vnd.oci.image.manifest.v1+json")
+        if [ "$STATUS" = "200" ]; then
+          echo "Image verified: manifest exists in registry"
+        else
+          echo "Image verification failed: HTTP $STATUS"
+          exit 1
+        fi

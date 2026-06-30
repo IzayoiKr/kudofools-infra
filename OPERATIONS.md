@@ -1,0 +1,111 @@
+# Operations
+
+## OpenBao re-seal
+
+After any pod restart (node reboot, OOM, etc.), OpenBao reseals:
+
+```bash
+kubectl exec openbao-0 -- bao operator unseal $(jq -r '.unseal_keys_hex[0]' ~/.bao-keys.json)
+kubectl exec openbao-0 -- bao operator unseal $(jq -r '.unseal_keys_hex[1]' ~/.bao-keys.json)
+kubectl exec openbao-0 -- bao operator unseal $(jq -r '.unseal_keys_hex[2]' ~/.bao-keys.json)
+```
+
+OpenBao's container has `readOnlyRootFilesystem: true`, so `bao login` cannot persist the token. Pass the root token via `BAO_TOKEN` env var instead:
+
+```bash
+ROOT_TOKEN=$(jq -r '.root_token' ~/.bao-keys.json)
+kubectl exec openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao <command>"
+```
+
+## Flux health
+
+```bash
+flux get kustomizations
+flux get helmreleases -A
+```
+
+## Rotating secrets
+
+All secrets are stored in OpenBao and synced by ESO. After updating OpenBao, force ESO to sync (see below).
+
+All commands require the OpenBao root token:
+
+```bash
+ROOT_TOKEN=$(jq -r '.root_token' ~/.bao-keys.json)
+```
+
+### Registry password
+
+The htpasswd entry in OpenBao and Woodpecker's `REGISTRY_PASSWORD` must stay in sync.
+
+```bash
+NEW_PASS=$(openssl rand -base64 32)
+echo "Plain-text password (update in Woodpecker UI): $NEW_PASS"
+
+HTPASSWD=$(htpasswd -Bbn admin "$NEW_PASS")
+kubectl exec openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao kv patch kv/registry/auth auth.htpasswd='$HTPASSWD'"
+```
+
+The registry reads the htpasswd file on every request — no restart needed. Verify auth works:
+
+```bash
+kubectl run auth-check --image=alpine:3.21 --rm -it --restart=Never -n woodpecker-pipelines -- sh -c "
+  apk add --no-cache curl
+  curl -s -u 'admin:$NEW_PASS' 'http://registry-service.default.svc:5000/v2/_catalog'
+"
+```
+
+### Woodpecker agent secret
+
+```bash
+kubectl exec openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao kv patch kv/woodpecker/secrets WOODPECKER_AGENT_SECRET=<new-value>"
+```
+
+### Forgejo secrets
+
+```bash
+kubectl exec openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao kv patch kv/forgejo/secrets LFS_JWT_SECRET=<new-value>"
+```
+
+### Cloudflared tunnel token
+
+```bash
+kubectl exec openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao kv patch kv/cloudflared/credentials credentials.json='$(cat /path/to/new/credentials.json)'"
+```
+
+## Regenerate Forgejo OAuth
+
+Generate new credentials in Forgejo UI (Settings → Applications → OAuth2), then update OpenBao:
+
+```bash
+kubectl exec openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao kv patch kv/woodpecker/secrets \
+  WOODPECKER_FORGEJO_CLIENT=<new-client-id> \
+  WOODPECKER_FORGEJO_SECRET=<new-client-secret>"
+```
+
+## Force ESO sync
+
+ESO refreshes secrets every 1h by default. Force an immediate sync per secret:
+
+```bash
+kubectl annotate externalsecret -n default <name> force-sync=$(date +%s) --overwrite
+```
+
+Verify the Kubernetes secret was updated:
+
+```bash
+kubectl get secret registry-auth -o jsonpath='{.data.auth\.htpasswd}' | base64 -d
+```
+
+## Known issues
+
+### `moby/buildkit` image cannot connect to cluster services
+
+The `moby/buildkit` image's `buildctl` Go binary fails to TCP-dial cluster services (gets "connection refused"), even though `curl` from the same image connects fine. `GODEBUG=netdns=cgo` does not resolve it.
+
+Always use `alpine:3.21` as the base image and download `buildctl` from GitHub releases:
+
+```bash
+apk add --no-cache curl
+curl -sL https://github.com/moby/buildkit/releases/download/v0.31.0/buildkit-v0.31.0.linux-arm64.tar.gz | tar -xz -C /usr/local bin/buildctl
+```

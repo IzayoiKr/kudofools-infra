@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: buildkitd
+  namespace: default
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: buildkitd
+  template:
+    metadata:
+      labels:
+        app: buildkitd
+    spec:
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: buildkitd
+          image: moby/buildkit:v0.31.0-rootless
+          args:
+            - --addr
+            - tcp://0.0.0.0:1234
+            - --oci-worker-no-process-sandbox
+          ports:
+            - containerPort: 1234
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            # Required by buildkit — uses clone() and other syscalls blocked by RuntimeDefault.
+            seccompProfile:
+              type: Unconfined
+            appArmorProfile:
+              type: Unconfined
+            readOnlyRootFilesystem: true
+          livenessProbe:
+            tcpSocket:
+              port: 1234
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: cache
+              mountPath: /home/user/.local/share/buildkit
+            - name: tmp
+              mountPath: /tmp
+            - name: local-tmp
+              mountPath: /home/user/.local/tmp
+            - name: run
+              mountPath: /run
+            - name: cache-home
+              mountPath: /home/user/.cache
+      volumes:
+        - name: cache
+          persistentVolumeClaim:
+            claimName: buildkitd-cache-pvc
+        - name: tmp
+          emptyDir: {}
+        - name: local-tmp
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
+        - name: cache-home
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: buildkitd-service
+  namespace: default
+spec:
+  clusterIP: 10.43.12.34
+  selector:
+    app: buildkitd
+  ports:
+    - protocol: TCP
+      port: 1234
+      targetPort: 1234

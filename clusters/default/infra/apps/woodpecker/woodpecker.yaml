@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: woodpecker
+  namespace: default
+  labels:
+    app: woodpecker
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: woodpecker
+  template:
+    metadata:
+      labels:
+        app: woodpecker
+    spec:
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: server
+          image: woodpeckerci/woodpecker-server:v3.15.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            seccompProfile:
+              type: RuntimeDefault
+            runAsUser: 1000
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+          ports:
+            - containerPort: 8000
+              name: http
+            - containerPort: 9000
+              name: grpc
+          env:
+            - name: WOODPECKER_FORGEJO
+              value: "true"
+            - name: WOODPECKER_FORGEJO_URL
+              value: "https://forgejo.kudofools.dev"
+            - name: WOODPECKER_HOST
+              value: "https://woodpecker.kudofools.dev"
+            - name: WOODPECKER_OPEN
+              value: "true"
+            - name: WOODPECKER_ADMIN
+              value: "IzayoiKr"
+            - name: WOODPECKER_AGENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: woodpecker-secrets
+                  key: WOODPECKER_AGENT_SECRET
+            - name: WOODPECKER_FORGEJO_CLIENT
+              valueFrom:
+                secretKeyRef:
+                  name: woodpecker-secrets
+                  key: WOODPECKER_FORGEJO_CLIENT
+            - name: WOODPECKER_FORGEJO_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: woodpecker-secrets
+                  key: WOODPECKER_FORGEJO_SECRET
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            limits:
+              memory: 512Mi
+              cpu: "500m"
+            requests:
+              memory: 128Mi
+              cpu: "100m"
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/woodpecker
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: woodpecker-data-pvc
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: woodpecker
+  namespace: default
+spec:
+  clusterIP: 10.43.80.1
+  selector:
+    app: woodpecker
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+    - name: grpc
+      port: 9000
+      targetPort: 9000

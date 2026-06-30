@@ -1,0 +1,109 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: forgejo-config
+  namespace: default
+data:
+  app.ini: |
+    APP_NAME = KudoFools Git
+    APP_SLOGAN = KudoFools Repos Collection
+    RUN_USER = git
+    WORK_PATH = /data
+    RUN_MODE = prod
+
+    [server]
+    HTTP_ADDR = 0.0.0.0
+    HTTP_PORT = 3000
+    SSH_DOMAIN = forgejo.kudofools.dev
+    DOMAIN = forgejo.kudofools.dev
+    ROOT_URL = https://forgejo.kudofools.dev
+    APP_DATA_PATH = /data/data
+    DISABLE_SSH = true
+    START_SSH_SERVER = false
+    SSH_PORT = 26218
+    SSH_LISTEN_PORT = 26218
+    LFS_START_SERVER = true
+    LFS_JWT_SECRET =
+    OFFLINE_MODE = false
+    LANDING_PAGE = explore
+    MINIMUM_KEY_SIZE_CHECK = true
+
+    [database]
+    DB_TYPE = sqlite3
+    HOST = 127.0.0.1:3306
+    NAME = forgejo
+    USER = forgejo
+    PASSWD =
+    SCHEMA =
+    SSL_MODE = disable
+    PATH = /data/data/forgejo.db
+    LOG_SQL = false
+
+    [repository]
+    ROOT = /data/data/forgejo-repositories
+
+    [lfs]
+    PATH = /data/data/lfs
+
+    [mailer]
+    ENABLED = true
+    SMTP_ADDR = 127.0.0.1
+    SMTP_PORT = 25
+    FROM = noreply@kudofools.dev
+    USER =
+    PASSWD =
+
+    [service]
+    REGISTER_EMAIL_CONFIRM = false
+    ENABLE_NOTIFY_MAIL = true
+    DISABLE_REGISTRATION = true
+    ALLOW_ONLY_EXTERNAL_REGISTRATION = false
+    ENABLE_CAPTCHA = false
+    REQUIRE_SIGNIN_VIEW = false
+    DEFAULT_KEEP_EMAIL_PRIVATE = true
+    DEFAULT_ALLOW_CREATE_ORGANIZATION = true
+    DEFAULT_ENABLE_TIMETRACKING = true
+    NO_REPLY_ADDRESS = noreply@kudofools.dev
+
+    [openid]
+    ENABLE_OPENID_SIGNIN = true
+    ENABLE_OPENID_SIGNUP = true
+
+    [cron.update_checker]
+    ENABLED = true
+
+    [session]
+    PROVIDER = file
+
+    [log]
+    MODE = console
+    LEVEL = info
+    ROOT_PATH = /data/log
+
+    [repository.pull-request]
+    DEFAULT_MERGE_STYLE = merge
+
+    [repository.signing]
+    DEFAULT_TRUST_MODEL = committer
+
+    [security]
+    INSTALL_LOCK = true
+    INTERNAL_TOKEN =
+    PASSWORD_HASH_ALGO = pbkdf2_hi
+    IMPORT_LOCAL_PATHS = false
+
+    [oauth2]
+    JWT_SECRET =
+
+    [other]
+    SHOW_FOOTER_POWERED_BY = false
+    SHOW_FOOTER_TEMPLATE_LOAD_TIME = false
+
+    [webhook]
+    ALLOWED_HOST_LIST = external,loopback
+
+    [actions]
+    ENABLED = false
+
+    [rate_limit]
+    ENABLED = false

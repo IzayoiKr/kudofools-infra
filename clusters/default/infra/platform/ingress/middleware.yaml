@@ -1,0 +1,30 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: forgejo-security-headers
+  namespace: default
+spec:
+  headers:
+    browserXssFilter: true
+    contentTypeNosniff: true
+    forceSTSHeader: true
+    stsSeconds: 31536000
+    stsIncludeSubdomains: true
+    stsPreload: true
+    referrerPolicy: "strict-origin-when-cross-origin"
+    customResponseHeaders:
+      Permissions-Policy: "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+      Content-Security-Policy: "frame-ancestors 'self';"
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: forgejo-rate-limit
+  namespace: default
+spec:
+  rateLimit:
+    average: 100
+    burst: 50
+    period: 10s
+    sourceCriterion:
+      requestHeaderName: Cf-Connecting-IP
