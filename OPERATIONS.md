@@ -99,13 +99,8 @@ kubectl get secret registry-auth -o jsonpath='{.data.auth\.htpasswd}' | base64 -
 
 ## Known issues
 
-### `moby/buildkit` image cannot connect to cluster services
+### `curlimages/curl` DNS resolution fails in-cluster
 
-The `moby/buildkit` image's `buildctl` Go binary fails to TCP-dial cluster services (gets "connection refused"), even though `curl` from the same image connects fine. `GODEBUG=netdns=cgo` does not resolve it.
+`curlimages/curl` images after v7.77 have DNS resolution problems in Kubernetes due to Alpine's musl libc resolver interacting badly with `ndots:5` and search domains in `/etc/resolv.conf`. The symptom is `curl: (6) Could not resolve host`.
 
-Always use `alpine:3.21` as the base image and download `buildctl` from GitHub releases:
-
-```bash
-apk add --no-cache curl
-curl -sL https://github.com/moby/buildkit/releases/download/v0.31.0/buildkit-v0.31.0.linux-arm64.tar.gz | tar -xz -C /usr/local bin/buildctl
-```
+Use `alpine:3.21` + `apk add curl` instead, or use `curlimages/curl:7.77.0`.
