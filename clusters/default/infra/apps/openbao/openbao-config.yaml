@@ -5,6 +5,7 @@ metadata:
   namespace: default
 data:
   openbao.hcl: |
+    ui = true
     storage "file" {
       path = "/data"
     }
@@ -13,3 +14,6 @@ data:
       tls_disable = true
     }
     api_addr = "http://openbao:8200"
+    audit "file" {
+      path = "/tmp/audit.log"
+    }

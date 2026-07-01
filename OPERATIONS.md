@@ -17,6 +17,7 @@ ROOT_TOKEN=$(jq -r '.root_token' ~/.bao-keys.json)
 kubectl exec openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao <command>"
 ```
 
+
 ## Flux health
 
 ```bash
@@ -96,6 +97,20 @@ Verify the Kubernetes secret was updated:
 ```bash
 kubectl get secret registry-auth -o jsonpath='{.data.auth\.htpasswd}' | base64 -d
 ```
+
+## Security
+
+### OpenBao exposed via internet
+
+OpenBao UI is accessible at `openbao.kudofools.dev` through Cloudflare. Protections in place:
+
+- **Authentication**: `userpass` auth with dedicated UI user (not root token)
+- **Rate limiting**: Traefik middleware (100 req/10s per IP) via `Cf-Connecting-IP`
+- **Security headers**: HSTS, XSS protection, nosniff, strict referrer policy
+- **Audit log**: All API requests logged to `/tmp/audit.log` (checked via `kubectl exec openbao-0 -- cat /tmp/audit.log`)
+- **TLS**: Cloudflare edge terminates TLS; internal traffic is plaintext on cluster network
+
+For additional protection, consider [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/applications/) as an extra auth layer in front of the tunnel.
 
 ## Known issues
 

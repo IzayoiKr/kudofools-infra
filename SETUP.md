@@ -98,6 +98,21 @@ kubectl exec openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao write auth/kubernetes
   bound_service_account_namespaces=flux-system \
   policies=eso \
   ttl=1h"
+
+# Enable userpass auth for the web UI (instead of logging in with the root token)
+kubectl exec openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao auth enable userpass"
+
+# Create a UI admin policy
+kubectl exec openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao policy write ui-admin -" <<'EOF'
+path "*" {
+  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+}
+EOF
+
+# Create a user
+UI_PASS=$(openssl rand -base64 32)
+kubectl exec openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao write auth/userpass/users/admin password=$UI_PASS token_policies=ui-admin"
+echo "Web UI password: $UI_PASS"  # Save this — used to log in at https://openbao.kudofools.dev/ui/
 ```
 
 ## 6. Seed secrets into OpenBao
