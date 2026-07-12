@@ -1,0 +1,26 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: intikepri-static
+  namespace: flux-system
+spec:
+  interval: 5m
+  ref:
+    branch: main
+  secretRef:
+    name: flux-system
+  url: https://forgejo.kudofools.dev/IzayoiKr/intikepri-static.git
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: intikepri-static
+  namespace: flux-system
+spec:
+  interval: 5m
+  retryInterval: 1m
+  sourceRef:
+    kind: GitRepository
+    name: intikepri-static
+  path: ./deploy
+  prune: true
