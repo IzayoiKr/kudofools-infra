@@ -3,5 +3,6 @@ kind: Kustomization
 resources:
   - limitrange.yaml
   - namespace-woodpecker-pipelines.yaml
+  - buildkitd-namespace.yaml
   - network-policy.yaml
   - storage.yaml

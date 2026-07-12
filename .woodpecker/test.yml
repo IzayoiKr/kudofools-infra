@@ -19,7 +19,7 @@ steps:
       - echo 'CMD ["echo", "hello-from-woodpecker"]' >> /tmp/build/Dockerfile
       - |
         for i in $(seq 1 5); do
-          if buildctl --addr tcp://buildkitd-service.default.svc:1234 build \
+          if buildctl --addr tcp://buildkitd-service.buildkitd.svc:1234 build \
             --frontend dockerfile.v0 \
             --local context=/tmp/build \
             --local dockerfile=/tmp/build \

@@ -5,3 +5,5 @@ resources:
   - woodpecker-agent.yaml
   - woodpecker-agent-rbac.yaml
   - buildkitd.yaml
+  - buildkitd-limitrange.yaml
+  - buildkitd-network-policy.yaml
