@@ -35,18 +35,30 @@ spec:
             appArmorProfile:
               type: Unconfined
             readOnlyRootFilesystem: true
+          startupProbe:
+            tcpSocket:
+              port: 1234
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
           livenessProbe:
             tcpSocket:
               port: 1234
             initialDelaySeconds: 10
             periodSeconds: 10
+            timeoutSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: 1234
+            initialDelaySeconds: 5
+            periodSeconds: 10
           resources:
             limits:
-              cpu: "1"
-              memory: 1Gi
+              cpu: "4"
+              memory: 4Gi
             requests:
-              cpu: 250m
-              memory: 256Mi
+              cpu: 500m
+              memory: 512Mi
           volumeMounts:
             - name: cache
               mountPath: /home/user/.local/share/buildkit
