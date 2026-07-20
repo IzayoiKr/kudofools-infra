@@ -100,7 +100,7 @@ data:
     SHOW_FOOTER_TEMPLATE_LOAD_TIME = false
 
     [webhook]
-    ALLOWED_HOST_LIST = external,loopback
+    ALLOWED_HOST_LIST = external,loopback,private
 
     [actions]
     ENABLED = false
