@@ -52,7 +52,7 @@ metadata:
 spec:
   type: github
   secretRef:
-    name: intikepri-static-webhook
+    name: intikepri-cms-webhook
   resources:
     - kind: GitRepository
       name: intikepri-cms
@@ -65,7 +65,7 @@ metadata:
 spec:
   type: dockerhub
   secretRef:
-    name: intikepri-static-webhook
+    name: intikepri-cms-webhook
   resources:
     - kind: ImageRepository
       name: intikepri-cms
