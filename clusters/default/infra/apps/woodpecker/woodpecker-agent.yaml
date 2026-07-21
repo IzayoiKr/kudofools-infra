@@ -2,18 +2,24 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: woodpecker-agent
-  namespace: default
+  namespace: woodpecker
   labels:
-    app: woodpecker-agent
+    app.kubernetes.io/name: woodpecker-agent
+    app.kubernetes.io/instance: woodpecker-prod
+    app.kubernetes.io/part-of: kudofools
+    app.kubernetes.io/managed-by: flux
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: woodpecker-agent
+      app.kubernetes.io/name: woodpecker-agent
   template:
     metadata:
       labels:
-        app: woodpecker-agent
+        app.kubernetes.io/name: woodpecker-agent
+        app.kubernetes.io/instance: woodpecker-prod
+        app.kubernetes.io/part-of: kudofools
+        app.kubernetes.io/managed-by: flux
     spec:
       serviceAccountName: woodpecker-agent
       volumes:
@@ -33,7 +39,7 @@ spec:
             readOnlyRootFilesystem: true
           env:
             - name: WOODPECKER_SERVER
-              value: "woodpecker:9000"
+              value: "woodpecker.woodpecker.svc:9000"
             - name: WOODPECKER_AGENT_SECRET
               valueFrom:
                 secretKeyRef:

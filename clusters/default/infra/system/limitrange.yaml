@@ -1,8 +1,74 @@
 apiVersion: v1
 kind: LimitRange
 metadata:
-  name: default-pod-limits
-  namespace: default
+  name: openbao-limits
+  namespace: openbao
+  labels:
+    app.kubernetes.io/part-of: kudofools
+    app.kubernetes.io/managed-by: flux
+spec:
+  limits:
+    - default:
+        cpu: "500m"
+        memory: 512Mi
+      defaultRequest:
+        cpu: "100m"
+        memory: 64Mi
+      max:
+        cpu: "1"
+        memory: 1Gi
+      type: Container
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: forgejo-limits
+  namespace: forgejo
+  labels:
+    app.kubernetes.io/part-of: kudofools
+    app.kubernetes.io/managed-by: flux
+spec:
+  limits:
+    - default:
+        cpu: "500m"
+        memory: 512Mi
+      defaultRequest:
+        cpu: "100m"
+        memory: 64Mi
+      max:
+        cpu: "1"
+        memory: 1Gi
+      type: Container
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: registry-limits
+  namespace: registry
+  labels:
+    app.kubernetes.io/part-of: kudofools
+    app.kubernetes.io/managed-by: flux
+spec:
+  limits:
+    - default:
+        cpu: "500m"
+        memory: 512Mi
+      defaultRequest:
+        cpu: "100m"
+        memory: 64Mi
+      max:
+        cpu: "1"
+        memory: 1Gi
+      type: Container
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: woodpecker-limits
+  namespace: woodpecker
+  labels:
+    app.kubernetes.io/part-of: kudofools
+    app.kubernetes.io/managed-by: flux
 spec:
   limits:
     - default:
@@ -21,6 +87,9 @@ kind: LimitRange
 metadata:
   name: buildkitd-limits
   namespace: buildkitd
+  labels:
+    app.kubernetes.io/part-of: kudofools
+    app.kubernetes.io/managed-by: flux
 spec:
   limits:
     - default:
@@ -39,6 +108,9 @@ kind: LimitRange
 metadata:
   name: step-pod-limits
   namespace: woodpecker-pipelines
+  labels:
+    app.kubernetes.io/part-of: kudofools
+    app.kubernetes.io/managed-by: flux
 spec:
   limits:
     - default:

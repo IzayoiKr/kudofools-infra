@@ -1,0 +1,31 @@
+when:
+  - event: push
+    branch: main
+  - event: pull_request
+  - event: manual
+
+clone:
+  git:
+    image: woodpeckerci/plugin-git
+    settings:
+      depth: 1
+      lfs: false
+
+steps:
+  tflint:
+    image: ghcr.io/terraform-linters/tflint:latest
+    commands:
+      - cd opentofu
+      - tflint --init
+      - tflint
+  lint-and-validate:
+    image: ghcr.io/opentofu/opentofu:1.12.4
+    environment:
+      GODEBUG: asyncpreemptoff=1
+      TF_PLUGIN_CACHE_DIR: /tmp/tofu-cache
+    commands:
+      - mkdir -p /tmp/tofu-cache
+      - cd opentofu
+      - tofu fmt -check
+      - tofu init -backend=false
+      - for i in 1 2 3; do tofu validate && break || sleep 5; done

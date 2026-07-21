@@ -23,7 +23,7 @@ steps:
             --frontend dockerfile.v0 \
             --local context=/tmp/build \
             --local dockerfile=/tmp/build \
-            --output type=image,name=registry-service.default.svc:5000/test-hello:latest,push=true,registry.insecure=true,registry.username=admin,registry.password=$REGISTRY_PASSWORD; then
+            --output type=image,name=registry-service.registry.svc:5000/test-hello:latest,push=true,registry.insecure=true,registry.username=admin,registry.password=$REGISTRY_PASSWORD; then
             exit 0
           fi
           echo "buildctl failed (attempt $i/5), retrying in 10s..."
@@ -40,6 +40,6 @@ steps:
     commands:
       - apk add --no-cache curl
       - |
-        STATUS=$(curl -s -o /dev/null -w "%{http_code}" -u "admin:$REGISTRY_PASSWORD" "http://registry-service.default.svc:5000/v2/test-hello/manifests/latest" -H "Accept: application/vnd.oci.image.manifest.v1+json")
+        STATUS=$(curl -s -o /dev/null -w "%{http_code}" -u "admin:$REGISTRY_PASSWORD" "http://registry-service.registry.svc:5000/v2/test-hello/manifests/latest" -H "Accept: application/vnd.oci.image.manifest.v1+json")
         echo "HTTP status = $STATUS"
         if [ "$STATUS" = "200" ]; then echo "OK"; else echo "FAIL: $STATUS"; exit 1; fi

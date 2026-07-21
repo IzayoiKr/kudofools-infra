@@ -2,20 +2,26 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: woodpecker
-  namespace: default
+  namespace: woodpecker
   labels:
-    app: woodpecker
+    app.kubernetes.io/name: woodpecker
+    app.kubernetes.io/instance: woodpecker-prod
+    app.kubernetes.io/part-of: kudofools
+    app.kubernetes.io/managed-by: flux
 spec:
   replicas: 1
   strategy:
-    type: Recreate
+    type: RollingUpdate
   selector:
     matchLabels:
-      app: woodpecker
+      app.kubernetes.io/name: woodpecker
   template:
     metadata:
       labels:
-        app: woodpecker
+        app.kubernetes.io/name: woodpecker
+        app.kubernetes.io/instance: woodpecker-prod
+        app.kubernetes.io/part-of: kudofools
+        app.kubernetes.io/managed-by: flux
     spec:
       securityContext:
         fsGroup: 1000
@@ -97,11 +103,14 @@ apiVersion: v1
 kind: Service
 metadata:
   name: woodpecker
-  namespace: default
+  namespace: woodpecker
+  labels:
+    app.kubernetes.io/name: woodpecker
+    app.kubernetes.io/part-of: kudofools
+    app.kubernetes.io/managed-by: flux
 spec:
-  clusterIP: 10.43.80.1
   selector:
-    app: woodpecker
+    app.kubernetes.io/name: woodpecker
   ports:
     - name: http
       port: 8000

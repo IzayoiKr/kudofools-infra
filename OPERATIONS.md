@@ -5,16 +5,16 @@
 After any pod restart (node reboot, OOM, etc.), OpenBao reseals:
 
 ```bash
-kubectl exec openbao-0 -- bao operator unseal $(jq -r '.unseal_keys_hex[0]' ~/.bao-keys.json)
-kubectl exec openbao-0 -- bao operator unseal $(jq -r '.unseal_keys_hex[1]' ~/.bao-keys.json)
-kubectl exec openbao-0 -- bao operator unseal $(jq -r '.unseal_keys_hex[2]' ~/.bao-keys.json)
+kubectl exec -n openbao openbao-0 -- bao operator unseal $(jq -r '.unseal_keys_hex[0]' ~/.bao-keys.json)
+kubectl exec -n openbao openbao-0 -- bao operator unseal $(jq -r '.unseal_keys_hex[1]' ~/.bao-keys.json)
+kubectl exec -n openbao openbao-0 -- bao operator unseal $(jq -r '.unseal_keys_hex[2]' ~/.bao-keys.json)
 ```
 
 OpenBao's container has `readOnlyRootFilesystem: true`, so `bao login` cannot persist the token. Pass the root token via `BAO_TOKEN` env var instead:
 
 ```bash
 ROOT_TOKEN=$(jq -r '.root_token' ~/.bao-keys.json)
-kubectl exec openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao <command>"
+kubectl exec -n openbao openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao <command>"
 ```
 
 
@@ -44,7 +44,7 @@ NEW_PASS=$(openssl rand -base64 32)
 echo "Plain-text password (update in Woodpecker UI): $NEW_PASS"
 
 HTPASSWD=$(htpasswd -Bbn admin "$NEW_PASS")
-kubectl exec openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao kv patch kv/registry/auth auth.htpasswd='$HTPASSWD'"
+kubectl exec -n openbao openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao kv patch kv/registry/auth auth.htpasswd='$HTPASSWD'"
 ```
 
 The registry reads the htpasswd file on every request — no restart needed. Verify auth works:
@@ -52,26 +52,20 @@ The registry reads the htpasswd file on every request — no restart needed. Ver
 ```bash
 kubectl run auth-check --image=alpine:3.21 --rm -it --restart=Never -n woodpecker-pipelines -- sh -c "
   apk add --no-cache curl
-  curl -s -u 'admin:$NEW_PASS' 'http://registry-service.default.svc:5000/v2/_catalog'
+  curl -s -u 'admin:$NEW_PASS' 'http://registry-service.registry.svc:5000/v2/_catalog'
 "
 ```
 
 ### Woodpecker agent secret
 
 ```bash
-kubectl exec openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao kv patch kv/woodpecker/secrets WOODPECKER_AGENT_SECRET=<new-value>"
+kubectl exec -n openbao openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao kv patch kv/woodpecker/secrets WOODPECKER_AGENT_SECRET=<new-value>"
 ```
 
 ### Forgejo secrets
 
 ```bash
-kubectl exec openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao kv patch kv/forgejo/secrets LFS_JWT_SECRET=<new-value>"
-```
-
-### Cloudflared tunnel token
-
-```bash
-kubectl exec openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao kv patch kv/cloudflared/credentials credentials.json='$(cat /path/to/new/credentials.json)'"
+kubectl exec -n openbao openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao kv patch kv/forgejo/secrets LFS_JWT_SECRET=<new-value>"
 ```
 
 ## Regenerate Forgejo OAuth
@@ -79,7 +73,7 @@ kubectl exec openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao kv patch kv/cloudflar
 Generate new credentials in Forgejo UI (Settings → Applications → OAuth2), then update OpenBao:
 
 ```bash
-kubectl exec openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao kv patch kv/woodpecker/secrets \
+kubectl exec -n openbao openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao kv patch kv/woodpecker/secrets \
   WOODPECKER_FORGEJO_CLIENT=<new-client-id> \
   WOODPECKER_FORGEJO_SECRET=<new-client-secret>"
 ```
@@ -89,13 +83,60 @@ kubectl exec openbao-0 -- sh -c "BAO_TOKEN=$ROOT_TOKEN bao kv patch kv/woodpecke
 ESO refreshes secrets every 1h by default. Force an immediate sync per secret:
 
 ```bash
-kubectl annotate externalsecret -n default <name> force-sync=$(date +%s) --overwrite
+kubectl annotate externalsecret -n registry registry-auth force-sync=$(date +%s) --overwrite
+kubectl annotate externalsecret -n woodpecker woodpecker-secrets force-sync=$(date +%s) --overwrite
+kubectl annotate externalsecret -n forgejo forgejo-secrets force-sync=$(date +%s) --overwrite
 ```
 
 Verify the Kubernetes secret was updated:
 
 ```bash
-kubectl get secret registry-auth -o jsonpath='{.data.auth\.htpasswd}' | base64 -d
+kubectl get secret -n registry registry-auth -o jsonpath='{.data.auth\.htpasswd}' | base64 -d
+```
+
+## Updating OpenTofu Configs
+
+1. Edit files in `opentofu/`
+2. Push to main branch
+3. tofu-controller auto-detects changes and applies
+
+To force immediate reconciliation instead of waiting for the interval:
+
+```bash
+kubectl annotate terraform -n flux-system opentofu reconcile.fluxcd.io/requestedAt="$(date +%s)" --field-manager=flux
+```
+
+## Reconciling Image Automation Resources
+
+To force immediate reconciliation of image automation resources instead of waiting for the polling interval:
+
+```bash
+# Force ImageRepository to check Docker Hub
+kubectl annotate imagerepository -n flux-system intikepri-static reconcile.fluxcd.io/requestedAt="$(date +%s)" --field-manager=flux
+kubectl annotate imagerepository -n flux-system intikepri-cms reconcile.fluxcd.io/requestedAt="$(date +%s)" --field-manager=flux
+
+# Force ImagePolicy to re-evaluate tag ordering
+kubectl annotate imagepolicy -n flux-system intikepri-static reconcile.fluxcd.io/requestedAt="$(date +%s)" --field-manager=flux
+kubectl annotate imagepolicy -n flux-system intikepri-cms reconcile.fluxcd.io/requestedAt="$(date +%s)" --field-manager=flux
+
+# Force ImageUpdateAutomation to commit image updates
+kubectl annotate imageupdateautomation -n flux-system intikepri-static reconcile.fluxcd.io/requestedAt="$(date +%s)" --field-manager=flux
+kubectl annotate imageupdateautomation -n flux-system intikepri-cms reconcile.fluxcd.io/requestedAt="$(date +%s)" --field-manager=flux
+
+# Force Receiver to process webhook
+kubectl annotate receiver -n flux-system intikepri-static-git reconcile.fluxcd.io/requestedAt="$(date +%s)" --field-manager=flux
+kubectl annotate receiver -n flux-system intikepri-static-image reconcile.fluxcd.io/requestedAt="$(date +%s)" --field-manager=flux
+kubectl annotate receiver -n flux-system intikepri-cms-git reconcile.fluxcd.io/requestedAt="$(date +%s)" --field-manager=flux
+kubectl annotate receiver -n flux-system intikepri-cms-image reconcile.fluxcd.io/requestedAt="$(date +%s)" --field-manager=flux
+```
+
+## Drift Recovery
+
+If tofu-controller reports drift:
+
+```bash
+kubectl get terraform -n flux-system opentofu -o yaml
+kubectl describe terraform -n flux-system opentofu
 ```
 
 ## Security
@@ -105,9 +146,9 @@ kubectl get secret registry-auth -o jsonpath='{.data.auth\.htpasswd}' | base64 -
 OpenBao UI is accessible at `openbao.kudofools.dev` through Cloudflare. Protections in place:
 
 - **Authentication**: `userpass` auth with dedicated UI user (not root token)
-- **Rate limiting**: Traefik middleware (100 req/10s per IP) via `Cf-Connecting-IP`
+- **Rate limiting**: Traefik middleware (100 req/10s via ipStrategy)
 - **Security headers**: HSTS, XSS protection, nosniff, strict referrer policy
-- **Audit log**: All API requests logged to `/tmp/audit.log` (checked via `kubectl exec openbao-0 -- cat /tmp/audit.log`)
+- **Audit log**: All API requests logged to `/tmp/audit.log` (checked via `kubectl exec -n openbao openbao-0 -- cat /tmp/audit.log`)
 - **TLS**: Cloudflare edge terminates TLS; internal traffic is plaintext on cluster network
 
 For additional protection, consider [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/applications/) as an extra auth layer in front of the tunnel.

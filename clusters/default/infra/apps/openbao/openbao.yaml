@@ -2,9 +2,12 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: openbao
-  namespace: default
+  namespace: openbao
   labels:
-    app: openbao
+    app.kubernetes.io/name: openbao
+    app.kubernetes.io/instance: openbao-prod
+    app.kubernetes.io/part-of: kudofools
+    app.kubernetes.io/managed-by: flux
 spec:
   replicas: 1
   serviceName: openbao
@@ -12,11 +15,14 @@ spec:
     type: RollingUpdate
   selector:
     matchLabels:
-      app: openbao
+      app.kubernetes.io/name: openbao
   template:
     metadata:
       labels:
-        app: openbao
+        app.kubernetes.io/name: openbao
+        app.kubernetes.io/instance: openbao-prod
+        app.kubernetes.io/part-of: kudofools
+        app.kubernetes.io/managed-by: flux
     spec:
       serviceAccountName: openbao
       securityContext:
@@ -76,6 +82,9 @@ spec:
   volumeClaimTemplates:
     - metadata:
         name: data
+        labels:
+          app.kubernetes.io/name: openbao
+          app.kubernetes.io/part-of: kudofools
       spec:
         accessModes:
           - ReadWriteOnce
@@ -88,11 +97,14 @@ apiVersion: v1
 kind: Service
 metadata:
   name: openbao
-  namespace: default
+  namespace: openbao
+  labels:
+    app.kubernetes.io/name: openbao
+    app.kubernetes.io/part-of: kudofools
+    app.kubernetes.io/managed-by: flux
 spec:
-  clusterIP: 10.43.82.1
   selector:
-    app: openbao
+    app.kubernetes.io/name: openbao
   ports:
     - port: 8200
       targetPort: 8200

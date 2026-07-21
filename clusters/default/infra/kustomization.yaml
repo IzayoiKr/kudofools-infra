@@ -6,8 +6,8 @@ resources:
   - platform/eso/
   - platform/tofu-controller/
   - platform/image-automation/
+  - platform/cloudflared/
   - apps/openbao/
   - apps/forgejo/
   - apps/registry/
   - apps/woodpecker/
-  - apps/cloudflared/

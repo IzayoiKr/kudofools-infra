@@ -4,3 +4,4 @@ resources:
   - openbao-config.yaml
   - openbao.yaml
   - openbao-rbac.yaml
+  - ingress.yaml

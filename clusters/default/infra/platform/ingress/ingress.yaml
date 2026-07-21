@@ -2,11 +2,15 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: forgejo-ingress
-  namespace: default
+  namespace: forgejo
   annotations:
     traefik.ingress.kubernetes.io/router.middlewares: |
-      default-kudofools-infra-rate-limit@kubernetescrd,
-      default-kudofools-infra-security-headers@kubernetescrd
+      kube-system-infra-rate-limit@kubernetescrd,
+      kube-system-infra-security-headers@kubernetescrd
+  labels:
+    app.kubernetes.io/name: forgejo
+    app.kubernetes.io/part-of: kudofools
+    app.kubernetes.io/managed-by: flux
 spec:
   ingressClassName: traefik
   rules:
@@ -25,11 +29,15 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: woodpecker-ingress
-  namespace: default
+  namespace: woodpecker
   annotations:
     traefik.ingress.kubernetes.io/router.middlewares: |
-      default-kudofools-infra-rate-limit@kubernetescrd,
-      default-kudofools-infra-security-headers@kubernetescrd
+      kube-system-infra-rate-limit@kubernetescrd,
+      kube-system-infra-security-headers@kubernetescrd
+  labels:
+    app.kubernetes.io/name: woodpecker
+    app.kubernetes.io/part-of: kudofools
+    app.kubernetes.io/managed-by: flux
 spec:
   ingressClassName: traefik
   rules:
@@ -43,26 +51,3 @@ spec:
                 name: woodpecker
                 port:
                   number: 8000
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: openbao-ingress
-  namespace: default
-  annotations:
-    traefik.ingress.kubernetes.io/router.middlewares: |
-      default-kudofools-infra-rate-limit@kubernetescrd,
-      default-kudofools-infra-security-headers@kubernetescrd
-spec:
-  ingressClassName: traefik
-  rules:
-    - host: openbao.kudofools.dev
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: openbao
-                port:
-                  number: 8200

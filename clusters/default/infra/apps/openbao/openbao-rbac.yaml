@@ -2,12 +2,20 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: openbao
-  namespace: default
+  namespace: openbao
+  labels:
+    app.kubernetes.io/name: openbao
+    app.kubernetes.io/part-of: kudofools
+    app.kubernetes.io/managed-by: flux
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: openbao-token-review
+  labels:
+    app.kubernetes.io/name: openbao
+    app.kubernetes.io/part-of: kudofools
+    app.kubernetes.io/managed-by: flux
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -15,4 +23,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: openbao
-    namespace: default
+    namespace: openbao

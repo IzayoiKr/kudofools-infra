@@ -23,6 +23,11 @@ graph LR
             K8S_Res[(K8s Resources)]
         end
 
+        %% Infrastructure-as-Code
+        subgraph IaC [OpenTofu]
+            TF[tofu-controller]
+        end
+
         %% Security / Secret Syncing
         subgraph Security [Secret Engine]
             direction TB
@@ -50,6 +55,11 @@ graph LR
     FLUX --> K8S_Res
     FLUX -->|Deploy| OB
 
+    %% OpenTofu manages cloudflared + OpenBao config
+    REPO -->|Reconcile| TF
+    TF -->|Creates Tunnel + DNS| CF
+    TF -->|Configures| OB
+
     %% Network Routing Paths
     CF --> TR
     TR --> Apps
@@ -70,21 +80,31 @@ graph LR
 ```
 clusters/default/
 ├── flux-system/             # Flux bootstrap (auto-generated)
-├── forgejo-infra.yaml       # Kustomization: syncs infra/
-├── forgejo-eso.yaml         # Kustomization: syncs platform/eso-resources/
-├── infra/                   # Applied by forgejo-infra
-│   ├── system/              # LimitRange, NetworkPolicy, PVCs
+├── kudofools-infra.yaml     # Kustomization: syncs infra/
+├── kudofools-eso.yaml       # Kustomization: syncs eso-resources/
+├── kudofools-opentofu.yaml  # Kustomization: syncs opentofu/ Terraform CRD
+├── intikepri-*.yaml         # intikepri-related Flux resources
+├── infra/                   # Applied by infra
+│   ├── system/              # Namespaces, LimitRanges, NetworkPolicies, PVCs
 │   ├── platform/
 │   │   ├── ingress/         # Traefik Ingress rules + middlewares
-│   │   └── eso/             # External Secrets HelmRelease
+│   │   ├── eso/             # External Secrets HelmRelease
+│   │   ├── tofu-controller/ # tofu-controller HelmRelease
+│   │   ├── image-automation/# Flux image automation controllers
+│   │   └── cloudflared/     # Cloudflare Tunnel deployment (config managed by OpenTofu)
 │   └── apps/
 │       ├── openbao/         # Secrets engine (Vault-compatible)
 │       ├── forgejo/         # Git server + CI webhooks
 │       ├── registry/        # Internal Docker registry
-│       ├── woodpecker/      # CI server + agent + buildkitd
-│       └── cloudflared/     # Cloudflare Tunnel
-└── platform/
-    └── eso-resources/       # ClusterSecretStore + ExternalSecrets
+│       └── woodpecker/      # CI server + agent + buildkitd
+├── platform/
+│   └── eso-resources/       # ClusterSecretStore + ExternalSecrets
+└── opentofu/                # Terraform CRD for OpenTofu
+opentofu/                    # OpenTofu IaC (applied by tofu-controller)
+    ├── main.tf              # Provider configs
+    ├── cloudflare.tf        # Tunnel, credentials Secret, DNS records
+    ├── openbao.tf           # OpenBao mounts, policies, auth config
+    └── variables.tf         # Input variables
 ```
 
 ## Docs
